@@ -1,0 +1,74 @@
+name: Java CI with Gradle
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@main
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@main
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@main
+        with:
+          distribution: "temurin"
+          java-version: 21
+          check-latest: true
+
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@main
+        with:
+          path: ~/.gradle/caches/
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/build.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Set timezone to Shanghai
+        run: |
+          sudo ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+          sudo dpkg-reconfigure -f noninteractive tzdata
+      - name: Build with Gradle
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build
+          find . -type f -name "*.jar"
+      - name: Get timestamp and short SHA
+        id: timestamp
+        run: |
+          echo "::set-output name=timestamp::$(TZ='Asia/Shanghai' date +%s)"
+          echo "::set-output name=repo_name::$(echo ${{ github.repository }} | cut -d'/' -f2)"
+          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+      - name: Rename JAR files
+        run: |
+          short_sha=${{ steps.timestamp.outputs.short_sha }}
+          for jar in target/*.jar; do
+              filename=$(basename -- "$jar")
+              extension="${filename##*.}"
+              name="${filename%.*}"
+              new_filename="${name}-${short_sha}.${extension}"
+              mv "$jar" "target/$new_filename"
+          done
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@main
+        if: success()
+        with:
+          name: ${{ steps.timestamp.outputs.repo_name }}-${{ steps.timestamp.outputs.short_sha }}
+          path: target/*.jar
+
+      - name: Automatic release
+        if: success()
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: ${{ steps.timestamp.outputs.timestamp }}
+          prerelease: false
+          title: "${{ steps.timestamp.outputs.repo_name }}-${{ steps.timestamp.outputs.short_sha }} Release"
+          files: |
+            target/*.jar
