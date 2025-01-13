@@ -94,7 +94,8 @@ public class FabricHuskSync implements DedicatedServerModInitializer, HuskSync, 
     private static final int VERSION1_20_4 = 3700;
     private static final int VERSION1_20_5 = 3837;
     private static final int VERSION1_21_1 = 3955;
-    private static final int VERSION1_21_3 = 4082; // Current
+    private static final int VERSION1_21_3 = 4082;
+    private static final int VERSION1_21_4 = 4189; // Current
 
     private final TreeMap<Identifier, Serializer<? extends Data>> serializers = Maps.newTreeMap(
             SerializerRegistry.DEPENDENCY_ORDER_COMPARATOR
@@ -224,14 +225,6 @@ public class FabricHuskSync implements DedicatedServerModInitializer, HuskSync, 
 
         // Check for updates
         this.checkForUpdates();
-
-        log(Level.WARNING, """
-                **************
-                WARNING:
-                                
-                HuskSync for Fabric is still in an alpha state and is
-                not considered production ready.
-                **************""");
 
         ModLoadedCallback.EVENT.invoker().post(FabricHuskSyncAPI.getInstance());
     }
@@ -373,7 +366,8 @@ public class FabricHuskSync implements DedicatedServerModInitializer, HuskSync, 
             case "1.20.5", "1.20.6" -> VERSION1_20_5;
             case "1.21", "1.21.1" -> VERSION1_21_1;
             case "1.21.2", "1.21.3" -> VERSION1_21_3;
-            default -> VERSION1_21_3; // Current supported ver
+            case "1.21.4" -> VERSION1_21_4;
+            default -> VERSION1_21_4; // Current supported ver
         };
     }
 
