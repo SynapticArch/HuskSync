@@ -21,9 +21,10 @@ package net.william278.husksync.sync;
 
 import net.william278.husksync.HuskSync;
 import net.william278.husksync.data.DataSnapshot;
-import net.william278.husksync.redis.RedisKeyType;
 import net.william278.husksync.user.OnlineUser;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Optional;
 
 public class LockstepDataSyncer extends DataSyncer {
 
@@ -45,9 +46,19 @@ public class LockstepDataSyncer extends DataSyncer {
     @Override
     public void syncApplyUserData(@NotNull OnlineUser user) {
         this.listenForRedisData(user, () -> {
-            if (getRedis().getUserCheckedOut(user).isPresent()) {
+            if (user.cannotApplySnapshot()) {
+                plugin.debug("Not checking data state for user who has gone offline: %s".formatted(user.getName()));
                 return false;
             }
+
+            // If they are checked out, ask the server to check them back in and return false
+            final Optional<String> server = getRedis().getUserCheckedOut(user);
+            if (server.isPresent() && !server.get().equals(plugin.getServerName())) {
+                getRedis().petitionServerCheckin(server.get(), user);
+                return false;
+            }
+
+            // If they are checked in - or checked out on *this* server - we can apply their latest data
             getRedis().setUserCheckedOut(user, true);
             getRedis().getUserData(user).ifPresentOrElse(
                     data -> user.applySnapshot(data, DataSnapshot.UpdateCause.SYNCHRONIZED),
@@ -62,8 +73,9 @@ public class LockstepDataSyncer extends DataSyncer {
         plugin.runAsync(() -> saveData(
                 onlineUser, onlineUser.createSnapshot(DataSnapshot.SaveCause.DISCONNECT),
                 (user, data) -> {
-                    getRedis().setUserData(user, data, RedisKeyType.TTL_1_YEAR);
+                    getRedis().setUserData(user, data);
                     getRedis().setUserCheckedOut(user, false);
+                    plugin.unlockPlayer(user.getUuid());
                 }
         ));
     }

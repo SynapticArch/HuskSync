@@ -26,6 +26,9 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import net.minecraft.datafixer.TypeReferences;
 import net.minecraft.item.ItemStack;
+//#if MC==12001
+//$$ import net.minecraft.nbt.NbtCompound;
+//#endif
 import net.minecraft.nbt.*;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.william278.desertwell.util.Version;
@@ -36,6 +39,7 @@ import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -154,7 +158,7 @@ public abstract class FabricSerializer {
                 final DynamicRegistryManager registryManager = plugin.getMinecraftServer().getRegistryManager();
                 itemList.forEach(element -> {
                     final NbtCompound compound = (NbtCompound) element;
-                    contents[compound.getInt("Slot")] = ItemStack.fromNbt(registryManager, element).get();
+                    contents[compound.getInt("Slot")] = decodeNbt(element, registryManager);
                 });
                 plugin.debug(Arrays.toString(contents));
                 return contents;
@@ -170,14 +174,23 @@ public abstract class FabricSerializer {
             container.putInt("size", items.length);
             final NbtList itemList = new NbtList();
             final DynamicRegistryManager registryManager = plugin.getMinecraftServer().getRegistryManager();
+            final List<ItemStack> skipped = new ArrayList<>();
             for (int i = 0; i < items.length; i++) {
                 final ItemStack item = items[i];
-                if (item == null || item.isEmpty()) {
+                if (item == null || item.isEmpty() || item.getCount() < 1 || item.getCount() > 99) {
                     continue;
                 }
-                NbtCompound entry = (NbtCompound) item.toNbt(registryManager);
+
+                final NbtCompound entry = encodeNbt(item, registryManager);
+                if (entry == null) {
+                    skipped.add(item);
+                    continue;
+                }
                 entry.putInt("Slot", i);
                 itemList.add(entry);
+            }
+            if (!skipped.isEmpty()) {
+                plugin.debug("Skipped serializing items in array: %s".formatted(Arrays.toString(skipped.toArray())));
             }
             container.put(ITEMS_TAG, itemList);
             return container;
@@ -197,7 +210,7 @@ public abstract class FabricSerializer {
                 }
                 final NbtCompound compound = list.getCompound(i);
                 final int slot = compound.getInt("Slot");
-                itemStacks[slot] = ItemStack.fromNbt(registryManager, upgradeItemData(list.getCompound(i), mcVersion, plugin)).get();
+                itemStacks[slot] = decodeNbt(upgradeItemData(list.getCompound(i), mcVersion, plugin), registryManager);
             }
             return itemStacks;
         }
@@ -210,6 +223,36 @@ public abstract class FabricSerializer {
                     TypeReferences.ITEM_STACK, new Dynamic<Object>((DynamicOps) NbtOps.INSTANCE, tag),
                     plugin.getDataVersion(mcVersion), plugin.getDataVersion(plugin.getMinecraftVersion())
             ).getValue();
+        }
+
+        @Nullable
+        private NbtCompound encodeNbt(@NotNull ItemStack item, @NotNull DynamicRegistryManager registryManager) {
+            try {
+                //#if MC==12104
+                return (NbtCompound) item.toNbt(registryManager);
+                //#elseif MC==12101
+                //$$ return (NbtCompound) item.encode(registryManager);
+                //#elseif MC==12001
+                //$$ final NbtCompound compound = new NbtCompound();
+                //$$ item.writeNbt(compound);
+                //$$ return compound;
+                //#endif
+            } catch (Throwable e) {
+                return null;
+            }
+        }
+
+        @NotNull
+        private ItemStack decodeNbt(@NotNull NbtElement item, @NotNull DynamicRegistryManager registryManager) {
+            //#if MC==12001
+            //$$ final @Nullable ItemStack stack = ItemStack.fromNbt((NbtCompound) item);
+            //#else
+            final @Nullable ItemStack stack = ItemStack.fromNbt(registryManager, item).orElse(null);
+            //#endif
+            if (stack == null) {
+                throw new IllegalStateException("Failed to decode item NBT (got null 'fromNbt'): (%s)".formatted(item));
+            }
+            return stack;
         }
 
     }

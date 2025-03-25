@@ -47,6 +47,7 @@ import net.william278.husksync.database.PostgresDatabase;
 import net.william278.husksync.event.BukkitEventDispatcher;
 import net.william278.husksync.hook.PlanHook;
 import net.william278.husksync.listener.BukkitEventListener;
+import net.william278.husksync.listener.LockedHandler;
 import net.william278.husksync.migrator.LegacyMigrator;
 import net.william278.husksync.migrator.Migrator;
 import net.william278.husksync.migrator.MpdbMigrator;
@@ -55,9 +56,11 @@ import net.william278.husksync.sync.DataSyncer;
 import net.william278.husksync.user.BukkitUser;
 import net.william278.husksync.user.OnlineUser;
 import net.william278.husksync.util.BukkitLegacyConverter;
-import net.william278.husksync.util.BukkitMapPersister;
+import net.william278.husksync.maps.BukkitMapHandler;
 import net.william278.husksync.util.BukkitTask;
 import net.william278.husksync.util.LegacyConverter;
+import net.william278.toilet.BukkitToilet;
+import net.william278.toilet.Toilet;
 import net.william278.uniform.Uniform;
 import net.william278.uniform.bukkit.BukkitUniform;
 import org.bstats.bukkit.Metrics;
@@ -81,7 +84,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @SuppressWarnings("unchecked")
 public class BukkitHuskSync extends JavaPlugin implements HuskSync, BukkitTask.Supplier,
-        BukkitEventDispatcher, BukkitMapPersister {
+        BukkitEventDispatcher, BukkitMapHandler {
 
     /**
      * Metrics ID for <a href="https://bstats.org/plugin/bukkit/HuskSync%20-%20Bukkit/13140">HuskSync on Bukkit</a>.
@@ -96,10 +99,12 @@ public class BukkitHuskSync extends JavaPlugin implements HuskSync, BukkitTask.S
     private final Map<Integer, MapView> mapViews = Maps.newConcurrentMap();
     private final List<Migrator> availableMigrators = Lists.newArrayList();
     private final Set<UUID> lockedPlayers = Sets.newConcurrentHashSet();
+    private final Set<UUID> disconnectingPlayers = Sets.newConcurrentHashSet();
 
     private boolean disabling;
     private Gson gson;
     private AudienceProvider audiences;
+    private Toilet toilet;
     private MorePaperLib paperLib;
     private Database database;
     private RedisManager redisManager;
@@ -139,6 +144,7 @@ public class BukkitHuskSync extends JavaPlugin implements HuskSync, BukkitTask.S
     @Override
     public void onEnable() {
         this.audiences = BukkitAudiences.create(this);
+        this.toilet = BukkitToilet.create(getDumpOptions());
 
         // Check compatibility
         checkCompatibility();
@@ -364,6 +370,12 @@ public class BukkitHuskSync extends JavaPlugin implements HuskSync, BukkitTask.S
     @Override
     public Optional<LegacyConverter> getLegacyConverter() {
         return Optional.of(legacyConverter);
+    }
+
+    @Override
+    @NotNull
+    public LockedHandler getLockedHandler() {
+        return eventListener.getLockedHandler();
     }
 
     @NotNull

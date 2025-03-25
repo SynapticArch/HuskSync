@@ -27,7 +27,10 @@ public enum RedisKeyType {
 
     LATEST_SNAPSHOT,
     SERVER_SWITCH,
-    DATA_CHECKOUT;
+    DATA_CHECKOUT,
+    MAP_ID,
+    MAP_ID_REVERSED,
+    MAP_DATA;
 
     public static final int TTL_1_YEAR = 60 * 60 * 24 * 7 * 52; // 1 year
     public static final int TTL_10_SECONDS = 10; // 10 seconds

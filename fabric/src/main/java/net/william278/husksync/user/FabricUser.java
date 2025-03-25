@@ -25,7 +25,11 @@ import eu.pb4.sgui.api.elements.GuiElementInterface;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.kyori.adventure.audience.Audience;
+//#if MC==12104
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
+//#else
+//$$ import net.kyori.adventure.platform.fabric.FabricServerAudiences;
+//#endif
 import net.minecraft.item.ItemStack;
 import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.ScreenHandlerType;
@@ -60,8 +64,9 @@ public class FabricUser extends OnlineUser implements FabricUserDataHolder {
     }
 
     @Override
-    public boolean isOffline() {
-        return player == null || player.isDisconnected();
+    public boolean hasDisconnected() {
+        return getPlugin().getDisconnectingPlayers().contains(getUuid())
+                || player == null || player.isDisconnected();
     }
 
     @NotNull
@@ -75,7 +80,7 @@ public class FabricUser extends OnlineUser implements FabricUserDataHolder {
     public void sendToast(@NotNull MineDown title, @NotNull MineDown description, @NotNull String iconMaterial,
                           @NotNull String backgroundType) {
         plugin.log(Level.WARNING, "Toast notifications are deprecated. " +
-                                  "Please change your notification display slot to CHAT, ACTION_BAR or NONE.");
+                "Please change your notification display slot to CHAT, ACTION_BAR or NONE.");
         this.sendActionBar(title);
     }
 
@@ -102,7 +107,11 @@ public class FabricUser extends OnlineUser implements FabricUserDataHolder {
             this.editable = editable;
 
             // Set title, items
+            //#if MC==12104
             this.setTitle(((MinecraftServerAudiences) plugin.getAudiences()).asNative(title.toComponent()));
+            //#else
+            //$$ this.setTitle(((FabricServerAudiences) plugin.getAudiences()).toNative(title.toComponent()));
+            //#endif
             this.setLockPlayerInventory(!editable);
             for (int i = 0; i < size; i++) {
                 final ItemStack item = items.getContents()[i];
