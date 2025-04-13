@@ -288,9 +288,28 @@ public class PostgresDatabase extends Database {
                 return retrievedData;
             }
         } catch (SQLException | DataAdapter.AdaptionException e) {
-            plugin.log(Level.SEVERE, "Failed to fetch a user's current user data from the database", e);
+            plugin.log(Level.SEVERE, "Failed to fetch a user's list of snapshots from the database", e);
         }
         return retrievedData;
+    }
+
+    @Override
+    public int getUnpinnedSnapshotCount(@NotNull User user) {
+        try (Connection connection = getConnection()) {
+            try (PreparedStatement statement = connection.prepareStatement(formatStatementTables("""
+            SELECT COUNT(`version_uuid`)
+            FROM `%user_data_table%`
+            WHERE `player_uuid`=? AND `pinned`=false;"""))) {
+                statement.setString(1, user.getUuid().toString());
+                final ResultSet resultSet = statement.executeQuery();
+                if (resultSet.next()) {
+                    return resultSet.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            plugin.log(Level.SEVERE, "Failed to fetch a user's current snapshot count", e);
+        }
+        return 0;
     }
 
     @Blocking
@@ -323,10 +342,9 @@ public class PostgresDatabase extends Database {
     @Blocking
     @Override
     protected void rotateSnapshots(@NotNull User user) {
-        final List<DataSnapshot.Packed> unpinnedUserData = getAllSnapshots(user).stream()
-                .filter(dataSnapshot -> !dataSnapshot.isPinned()).toList();
+        final int unpinnedSnapshots = getUnpinnedSnapshotCount(user);
         final int maxSnapshots = plugin.getSettings().getSynchronization().getMaxUserDataSnapshots();
-        if (unpinnedUserData.size() > maxSnapshots) {
+        if (unpinnedSnapshots > maxSnapshots) {
             try (Connection connection = getConnection()) {
                 try (PreparedStatement statement = connection.prepareStatement(formatStatementTables("""
                         WITH cte AS (
@@ -339,7 +357,7 @@ public class PostgresDatabase extends Database {
                         )
                         DELETE FROM %user_data_table%
                         WHERE version_uuid IN (SELECT version_uuid FROM cte);""".replace("%entry_count%",
-                        Integer.toString(unpinnedUserData.size() - maxSnapshots))))) {
+                        Integer.toString(unpinnedSnapshots - maxSnapshots))))) {
                     statement.setObject(1, user.getUuid());
                     statement.executeUpdate();
                 }
