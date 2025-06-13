@@ -23,6 +23,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
+import de.tr7zw.changeme.nbtapi.NBT;
 import de.tr7zw.changeme.nbtapi.utils.DataFixerUtil;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -92,9 +93,7 @@ public class BukkitHuskSync extends JavaPlugin implements HuskSync, BukkitTask.S
     private static final int METRICS_ID = 13140;
     private static final String PLATFORM_TYPE_ID = "bukkit";
 
-    private final TreeMap<Identifier, Serializer<? extends Data>> serializers = Maps.newTreeMap(
-            SerializerRegistry.DEPENDENCY_ORDER_COMPARATOR
-    );
+    private final HashMap<Identifier, Serializer<? extends Data>> serializers = Maps.newHashMap();
     private final Map<UUID, Map<Identifier, Data>> playerCustomDataStore = Maps.newConcurrentMap();
     private final Map<Integer, MapView> mapViews = Maps.newConcurrentMap();
     private final List<Migrator> availableMigrators = Lists.newArrayList();
@@ -148,6 +147,12 @@ public class BukkitHuskSync extends JavaPlugin implements HuskSync, BukkitTask.S
 
         // Check compatibility
         checkCompatibility();
+
+        // Preload NBT-API
+        if (!NBT.preloadApi()) {
+            log(Level.SEVERE, "Failed to load NBT API. HuskSync will not be initialized!");
+            return;
+        }
 
         // Register commands
         initialize("commands", (plugin) -> getUniform().register(PluginCommand.Type.create(this)));
@@ -350,7 +355,8 @@ public class BukkitHuskSync extends JavaPlugin implements HuskSync, BukkitTask.S
             case "1.20.5", "1.20.6" -> DataFixerUtil.VERSION1_20_5;
             case "1.21", "1.21.1" -> DataFixerUtil.VERSION1_21;
             case "1.21.2", "1.21.3" -> DataFixerUtil.VERSION1_21_2;
-            case "1.21.4" -> 4189/*DataFixerUtil.VERSION1_21_4*/;
+            case "1.21.4" -> 4189;
+            case "1.21.5" -> DataFixerUtil.VERSION1_21_5;
             default -> DataFixerUtil.getCurrentVersion();
         };
     }

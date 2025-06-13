@@ -54,7 +54,7 @@ import net.william278.husksync.FabricHuskSync;
 import net.william278.husksync.HuskSync;
 import net.william278.husksync.adapter.Adaptable;
 import net.william278.husksync.config.Settings.SynchronizationSettings.AttributeSettings;
-//#if MC==12104
+//#if MC>=12104
 import net.william278.husksync.mixins.HungerManagerMixin;
 //#endif
 import net.william278.husksync.user.FabricUser;
@@ -178,7 +178,7 @@ public abstract class FabricData implements Data {
             @Override
             public void apply(@NotNull FabricUser user, @NotNull FabricHuskSync plugin) throws IllegalStateException {
                 final ServerPlayerEntity player = user.getPlayer();
-                //#if MC==12104
+                //#if MC>=12104
                 player.playerScreenHandler.getCraftingInput().clear();
                 //#else
                 //$$ player.playerScreenHandler.clearCraftingSlots();
@@ -188,7 +188,11 @@ public abstract class FabricData implements Data {
                 for (int slot = 0; slot < player.getInventory().size(); slot++) {
                     player.getInventory().setStack(slot, items[slot] == null ? ItemStack.EMPTY : items[slot]);
                 }
-                player.getInventory().selectedSlot = heldItemSlot;
+                //#if MC<12105
+                //$$ player.getInventory().selectedSlot = heldItemSlot;
+                //#else
+                player.getInventory().setSelectedSlot(heldItemSlot);
+                //#endif
                 player.playerScreenHandler.sendContentUpdates();
                 player.getInventory().updateItems();
             }
@@ -513,7 +517,7 @@ public abstract class FabricData implements Data {
             // Apply teleport
             try {
                 player.dismountVehicle();
-                //#if MC==12104
+                //#if MC>=12104
                 player.teleport(target, x, y, z, Set.of(), yaw, pitch, true);
                 //#else
                 //$$ player.teleport(target, x, y, z, yaw, pitch);
@@ -552,13 +556,13 @@ public abstract class FabricData implements Data {
                 // This is necessary to prevent weird re-mappings with Registry#getKey()
                 //#if MC>0
                 //$$ final Registry<?> registry = stat.getValue().getRegistry();
-                //$$ final String registryId = registry.getKey().getValue().toString();
+                //$$ final String registryId = registry.getKey().getValue().value();
                 //$$ if (registryId.equals("custom_stat")) {
                 //$$    return;
                 //$$ }
                 //#else
                 final Registry<?> registry = stat.getValue().getRegistry();
-                final String registryId = registry.getKey().getValue().toString();
+                final String registryId = registry.getKey().getValue().value();
                 if (registryId.equals("custom_stat")) {
                     return;
                 }
@@ -804,7 +808,7 @@ public abstract class FabricData implements Data {
         @NotNull
         public static FabricData.Hunger adapt(@NotNull ServerPlayerEntity player) {
             final HungerManager hunger = player.getHungerManager();
-            //#if MC==12104
+            //#if MC>=12104
             float exhaustion = ((HungerManagerMixin) hunger).getExhaustion();
             //#else
             //$$ float exhaustion = hunger.getExhaustion();
@@ -823,7 +827,7 @@ public abstract class FabricData implements Data {
             final HungerManager hunger = player.getHungerManager();
             hunger.setFoodLevel(foodLevel);
             hunger.setSaturationLevel(saturation);
-            //#if MC==12104
+            //#if MC>=12104
             ((HungerManagerMixin) hunger).setExhaustion(exhaustion);
             //#else
             //$$ hunger.setExhaustion(exhaustion);
@@ -888,7 +892,11 @@ public abstract class FabricData implements Data {
 
         @Override
         public void apply(@NotNull FabricUser user, @NotNull FabricHuskSync plugin) throws IllegalStateException {
-            user.getPlayer().changeGameMode(net.minecraft.world.GameMode.byName(gameMode));
+            //#if MC<12105
+            //$$ user.getPlayer().changeGameMode(net.minecraft.world.GameMode.byName(gameMode));
+            //#else
+            user.getPlayer().changeGameMode(net.minecraft.world.GameMode.byId(gameMode));
+            //#endif
         }
 
     }
