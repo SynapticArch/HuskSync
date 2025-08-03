@@ -48,7 +48,9 @@ HuskSync supports the following [compatible versions](https://william278.net/doc
 
 |    Minecraft    | Latest HuskSync | Java Version | Platforms     | Support Status                |
 |:---------------:|:---------------:|:------------:|:--------------|:------------------------------|
-|     1.21.5      |    _latest_     |      21      | Paper         | ✅ **Active Release**          |
+|    1.21.7/8     |    _latest_     |      21      | Paper         | ✅ **Active Release**          |
+|     1.21.6      |      3.8.5      |      21      | Paper         | 🗃️ Archived (July 2025)      |
+|     1.21.5      |    _latest_     |      21      | Paper         | ✅ **January 2026** (Non-LTS)  |
 |     1.21.4      |    _latest_     |      21      | Paper, Fabric | ✅ **November 2025** (Non-LTS) |
 |     1.21.3      |      3.7.1      |      21      | Paper, Fabric | 🗃️ Archived (December 2024)  |
 |     1.21.1      |    _latest_     |      21      | Paper, Fabric | ✅ **November 2025** (LTS)     |

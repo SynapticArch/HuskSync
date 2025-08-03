@@ -54,7 +54,9 @@ public class LockstepDataSyncer extends DataSyncer {
             // If they are checked out, ask the server to check them back in and return false
             final Optional<String> server = getRedis().getUserCheckedOut(user);
             if (server.isPresent() && !server.get().equals(plugin.getServerName())) {
-                getRedis().petitionServerCheckin(server.get(), user);
+                if (plugin.getSettings().getSynchronization().isCheckinPetitions()) {
+                    getRedis().petitionServerCheckin(server.get(), user);
+                }
                 return false;
             }
 
